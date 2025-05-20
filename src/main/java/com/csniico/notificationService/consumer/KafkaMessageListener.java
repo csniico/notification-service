@@ -27,7 +27,10 @@ public class KafkaMessageListener {
     public void taskCreatedConsumer(@Payload Task task) {
         try{
             logger.info("consumer consumed the message {}", task.toString());
-            emails.addAll(Arrays.asList(task.getAssignedTo()));
+            // Add "assignedTo" strings to emails
+            emails.addAll(Arrays.stream(task.getAssignedTo())
+                    .map(assignedTo -> assignedTo.split(":")[1])
+                    .toList());
             emails.forEach(email -> {
                 System.out.printf("Sending email to %s%n", email);
                 Map<String, MessageAttributeValue> attributes = new HashMap<>();
@@ -40,6 +43,63 @@ public class KafkaMessageListener {
             System.out.printf("Error while consuming message: %s%n", e.getMessage());
         }
     }
+
+    @KafkaListener(topics = "task.updated")
+    public void taskUpdatedConsumer(@Payload Task task) {
+        try {
+            logger.info("Consumer consumed the message: {}", task.toString());
+        
+            // Collecting recipient emails
+            emails.addAll(Arrays.stream(task.getAssignedTo())
+                .map(assignedTo -> assignedTo.split(":")[1])
+                .toList());
+
+        // Sending email to assigned users
+        emails.forEach(email -> {
+            System.out.printf("Sending email to %s%n", email);
+            Map<String, MessageAttributeValue> attributes = new HashMap<>();
+            attributes.put("target_email", MessageAttributeValue.builder().dataType("String").stringValue(email).build());
+            
+            String message = String.format(
+                "Dear Team,%n%n" +
+                "You have been assigned the following task, which has recently been updated:%n%n" +
+                "- Task Title: %s%n" +
+                "- Description: %s%n" +
+                "- Priority: %s%n" +
+                "- Status: %s%n" +
+                "Please review the changes and take necessary actions to complete the task within the required timeframe.%n" +
+                "Best regards,%nTeam Notification Service",
+                task.getTitle(), task.getDescription(), task.getPriority(), task.getStatus()
+            );
+
+            SNSClient.pubTopicWithAttributes(snsClient, AppConfig.TOPIC_ARN, message, attributes);
+            System.out.println("Email notification sent to " + email);
+        });
+
+        // Sending email to admin
+            String _adminEmail = "christian.solomon@amalitech.com";
+            System.out.printf("Sending email to %s%n", _adminEmail);
+        Map<String, MessageAttributeValue> attributes = new HashMap<>();
+        attributes.put("target_email", MessageAttributeValue.builder().dataType("String").stringValue(_adminEmail).build());
+
+        String adminMessage = String.format(
+            "Dear Admin,%n%n" +
+            "The following task has been updated and assigned to you for management:%n%n" +
+            "- Task Title: %s%n" +
+            "- Description: %s%n" +
+            "- Priority: %s%n" +
+            "- Status: %s%n" +
+            "Best regards,%nTeam Notification Service",
+            task.getTitle(), task.getDescription(), task.getPriority(), task.getStatus()
+        );
+
+        SNSClient.pubTopicWithAttributes(snsClient, AppConfig.TOPIC_ARN, adminMessage, attributes);
+        System.out.println("Email notification sent to " + _adminEmail);
+
+    } catch (RuntimeException e) {
+        System.out.printf("Error while consuming message: %s%n", e.getMessage());
+    }
+}
 
     @KafkaListener(topics = "user.created")
     public void userCreatedConsumer(@Payload User user) {
