@@ -17,10 +17,8 @@ RUN wget https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21
 WORKDIR /app
 
 # Download the OpenTelemetry Java agent
-ENV OTEL_AGENT_VERSION=1.38.0
-RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${OTEL_AGENT_VERSION}/opentelemetry-javaagent.jar \
+RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.16.0/opentelemetry-javaagent.jar \
     -O /app/opentelemetry-javaagent.jar
-
 COPY . .
 
 RUN ./mvnw clean package -DskipTests
