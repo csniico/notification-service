@@ -32,3 +32,8 @@ build/
 ### VS Code ###
 .vscode/
 .env
+*.tar
+*.jar
+
+buildAndRunImage.sh
+push.sh
